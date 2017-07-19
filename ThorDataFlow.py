@@ -3,9 +3,11 @@ import tensorflow as tf
 from tensorpack import *
 from pycocotools.coco import COCO
 import cv2
+import os
 
-class CocoData(DataFlow):
+class CocoDataFlow(DataFlow):
   def __init__(self, dataDir, spFilter, shuffle=True):
+    assert os.path.isdir(dataDir), dataDir
     self.dir = dataDir
     annFile = '{}/annotations/instances_train2014.json'.format(self.dir)
     self.coco = COCO(annFile)
@@ -67,4 +69,3 @@ if __name__ == '__main__':
     img, label = next(flow)
   end = time.time()
   print('{} secs per datapoint'.format((end-start)/10/128))
-  #print('{}/{} images have annotation'.format(dataset.hasAnn, dataset.size()))
