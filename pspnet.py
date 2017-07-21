@@ -84,16 +84,31 @@ class Model(ModelDesc):
     defs, block_func = ([3, 4, 6, 3], bottleneck)
 
     with argscope(Conv2D, nl=tf.identity, use_bias=False,
-                     W_init=variance_scaling_initializer(mode='FAN_OUT')),
+                     W_init=variance_scaling_initializer(mode='FAN_OUT')), \
          argscope([Conv2D, MaxPooling, GlobalAvgPooling, BatchNorm], data_format=self.dataformat):
-      logits = (LinearWarp(image)
+      convmap = (LinearWarp(image)
                 .Conv2D('conv0', 64, 7, stride=2, nl=BNReLU)
                 .MaxPooling('pool0', shape=3, stride=2, padding='SAME')
                 .apply(layer, 'group0', block_func, 64, defs[0], 1, first=True)
                 .apply(layer, 'group1', block_func, 128, defs[1], 2)
                 .apply(layer, 'group2', block_func, 256, defs[2], 2)
-                .apply(layer, 'group3', block_func, 512, defs[3], 2)())
-
+                .apply(layer, 'group3', block_func, 512, defs[3], 2)
+                .BNReLU('bnlast')())
+    s = convmap.get_shape()[1:3]
+    with tf.variable_scope('fuse'):
+      s1 = LinearWarp(convmap)
+               .AvgPooling('pool1', shape=s, stride=s)
+               .Conv2D('conv1', 512, 1, stride=1, nl=BNReLU)
+      s2 = LinearWarp(convmap)
+               .AvgPooling('s2_pool', shape=s/2, stride=s/2)
+               .Conv2D('conv2', 512, 1, stride=1, nl=BNReLU)
+      s3 = LinearWarp(convmap)
+               .AvgPooling('pool3', shape=s/3, stride=s/3)
+               .Conv2D('conv3', 512, 1, stride=1, nl=BNReLU)
+      s4 = LinearWarp(convmap)
+               .AvgPooling('pool4', shape=s/6, stride=s/6)
+               .Conv2D('conv4', 512, 1, stride=1, nl=BNReLU)
+      fuse_conv = tf.concat([s1, s2, s3, s4], axis=3)
     self.cost = tf.identity(0., name='total_costs')
     summary.add_moving_summary(self.cost)
 
