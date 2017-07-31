@@ -9,7 +9,7 @@ import numpy as np
 import time
 
 env = robosims.controller.ChallengeController(
-        unity_path='projects/thor-201705011400-Linux64',
+        unity_path='projects/thor-201706291201-Linux64',
         x_display="0.0")
 env.start()
 actions = ['MoveAhead',
